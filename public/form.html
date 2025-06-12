@@ -1,0 +1,17 @@
+<!DOCTYPE html> <!--<!DOCTYPE html>：HTML5の文書であることを宣言-->
+<html lang="ja"> <!--<html lang="ja">：この文書は日本語で書かれているとブラウザに伝える-->
+<head> <!--<head>：文字コードやタイトルなどの設定-->
+  <meta charset="UTF-8"> <!--<meta charset="UTF-8">：文字コードの指定。日本語を正しく表示するために必要。-->
+  <title>お問い合わせフォーム</title> <!--<title>：ブラウザのタブに表示されるタイトル-->
+</head>
+<body> <!--<body>：画面に実際に表示される内容-->
+  <h1>お問い合わせフォーム</h1> <!--<h1>：見出し。「お問い合わせフォーム」と大きく表示されます。-->
+  <form action="/submit" method="POST"> <!--action	送信先のURL（サーバー側で /submit にPOST送信する）method	POST メソッドで送信。データをサーバーに隠して送る形式（安全）-->
+    <label>お名前: <input type="text" name="name" required /></label><br /><br /> <!--<input type="text">：テキスト1行を入力するフォーム。name="name"：サーバーに送信されるときのキー名。required：空白では送信できない（必須入力）-->
+    <label>メッセージ:<br />
+      <textarea name="message" rows="5" cols="30" required></textarea> <!--<textarea>：複数行のテキスト入力欄。name="message"：これもサーバーに送信されるときのキー名。rows/cols：縦横の大きさを指定（行・列）。required：入力必須-->
+    </label><br /><br />
+    <button type="submit">送信</button> <!--<button type="submit">：このボタンを押すと、<form>の内容が送信される-->
+  </form> <!--<form>：ユーザーの入力をサーバーに送るフォームです。-->
+</body>
+</html>
