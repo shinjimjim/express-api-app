@@ -1,12 +1,21 @@
 //Node.jsの`require`関数を使って、Expressモジュール（ライブラリ）を読み込む
 const express = require('express'); //express: Node.jsのWebアプリケーションフレームワーク。ルーティングやミドルウェアが使える。
-const fs = require('fs'); //fs: ファイルを読み書きできるNode.jsの標準モジュール（File System）。
-const path = require('path'); //path: ファイルやフォルダのパスを扱うためのNode.js標準モジュール。
+const mongoose = require('mongoose'); //MongoDBとNode.jsをつなぐODMライブラリ「Mongoose」を読み込みます。これにより、MongoDBのデータ操作をJavaScript的な書き方で扱えるようになります。
+const Message = require('./models/Message'); //`models/Message.js` に定義された Mongoose モデル（スキーマ付きのデータ定義）を読み込みます。これがMongoDBの `messages` コレクションの操作に使われます。
+/*const fs = require('fs'); //fs: ファイルを読み書きできるNode.jsの標準モジュール（File System）。
+const path = require('path'); //path: ファイルやフォルダのパスを扱うためのNode.js標準モジュール。*/
 
 //express() を呼び出すことで、Expressアプリケーション（Webサーバー）インスタンスを生成します。
 const app = express();
 //サーバーが待ち受けるポート番号を定義。  
 const PORT = 3000;
+
+// MongoDB接続
+mongoose.connect('mongodb://localhost:27017/contactForm', { //mongoose.connect() でMongoDBに接続。contactForm というデータベースを指定
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => console.log('✅ MongoDB connected')) //.then() で接続成功時のメッセージ表示
+  .catch(err => console.error('MongoDB connection error:', err)); //.catch() でエラー発生時のログ出力
 
 // JSONリクエストを扱うためのミドルウェア
 //app.use(express.json()); //この行によって、リクエストの body に含まれる JSON データを自動で JavaScriptオブジェクトに変換してくれます。
@@ -18,7 +27,7 @@ app.use(express.urlencoded({ extended: true })); //express.urlencoded()	フォ�
 app.use(express.static('public')); //express.static('public') を使うと、public フォルダ内のファイルがそのままURLでアクセスできる。
 
 // 保存先ファイルのパス
-const FILE_PATH = path.join(__dirname, 'data', 'messages.csv'); //__dirname：このファイル（index.js）が存在するフォルダの絶対パス。path.join(...)：OSに依存しない正しいパスを作成。messages.csv：保存先のファイル名。なければ後で自動生成される。
+//const FILE_PATH = path.join(__dirname, 'data', 'messages.csv'); //__dirname：このファイル（index.js）が存在するフォルダの絶対パス。path.join(...)：OSに依存しない正しいパスを作成。messages.csv：保存先のファイル名。なければ後で自動生成される。
 
 // 1. GETルート：テキストを返す。`GET`メソッドで `/`（ルート）にアクセスがあったときの処理。
 /*app.get('/', (req, res) => { //`req`：リクエストオブジェクト（誰がアクセスしたか等）。`res`：レスポンスオブジェクト（何を返すか）
@@ -38,11 +47,12 @@ app.post('/api/message', (req, res) => {
 });*/
 
 // POSTルート：フォームからのデータ受信
-app.post('/submit', (req, res) => {
+//app.post('/submit', (req, res) => {
+app.post('/submit', async (req, res) => {
   const { name, message } = req.body; //req.body.name など	送られたフォームのデータを取得。req.body.name と req.body.message にフォームの内容が入ります。
   //console.log(`Name: ${name}, Message: ${message}`);
 
-  // 1行分のCSVデータを作成
+  /*// 1行分のCSVデータを作成
   const timestamp = new Date().toISOString(); //日付付きCSV保存	new Date().toISOString()
   const csvLine = `"${timestamp}","${name}","${message.replace(/"/g, '""')}"\n`; //CSVでの安全な書式	replace(/"/g, '""')（ダブルクォートエスケープ）
 
@@ -58,7 +68,16 @@ app.post('/submit', (req, res) => {
   
   // 受信後、サンクスページにリダイレクト
   res.redirect('/thanks.html'); //res.redirect()	送信後にページを切り替える（リダイレクト）
-  });
+  });*/
+
+  try {
+    const newMessage = new Message({ name, message }); //new Message(...) で新しいメッセージドキュメントを作成
+    await newMessage.save(); //save() でMongoDBに保存（非同期処理なので await）
+    res.redirect('/thanks.html'); //保存に成功したら /thanks.html にリダイレクト
+  } catch (error) {
+    console.error('DB保存エラー:', error);
+    res.status(500).send('サーバーエラー'); //エラー時は 500 エラーを返す
+  }
 });
 
 //この行によって、サーバーが動き始めます
