@@ -96,6 +96,17 @@ app.get('/messages', async (req, res) => {
   }
 });
 
+// 削除処理ルート
+app.post('/messages/delete/:id', async (req, res) => { //URLに含まれるID（例: /messages/delete/123）を使って、該当メッセージを削除。
+  try {
+    await Message.findByIdAndDelete(req.params.id);
+    res.redirect('/messages'); //成功したらメッセージ一覧に戻る。
+  } catch (error) {
+    console.error('削除エラー:', error);
+    res.status(500).send('削除に失敗しました');
+  }
+});
+
 //この行によって、サーバーが動き始めます
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`); //console.log()	サーバー側でデータを確認

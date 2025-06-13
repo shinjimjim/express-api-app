@@ -8,13 +8,20 @@
 <body>
   <h1>メッセージ一覧</h1>
 
+  <!--EJSコードでメッセージの有無を判定。これは EJS の制御構文です。JavaScript そのままの if 文です。-->
   <% if (messages.length === 0) { %> <!--<% %> は JavaScriptのロジック を書く部分（画面に表示しない）。messages.length === 0：メッセージが0件なら「メッセージがありません」と表示。-->
     <p>まだメッセージがありません。</p>
   <% } else { %> <!--else：1件以上あれば下の ul リストで表示する。-->
-    <ul>
+    <ul> <!--<ul> は HTML の「リスト（unordered list）」の開始タグ。-->
       <% messages.forEach(msg => { %> <!--messages.forEach(msg => { ... })：受け取ったメッセージ配列を1件ずつループ。-->
         <li>
-          <strong><%= msg.name %></strong>: <%= msg.message %> <em>(<%= msg.createdAt.toLocaleString() %>)</em> <!--<%= %> は 値をHTMLに埋め込む（表示する）命令。-->
+          <strong><%= msg.name %></strong>: <%= msg.message %>
+          <em>(<%= msg.createdAt.toLocaleString() %>)</em> <!--<%= %> は 値をHTMLに埋め込む（表示する）命令。-->
+
+          <!-- 削除フォーム -->
+          <form action="/messages/delete/<%= msg._id %>" method="POST" style="display:inline;"> <!--<form> タグは、削除リクエストを送る HTML フォーム。action="/messages/delete/◯◯" によって、どのメッセージを削除するか識別（IDをURLに含めている）。method="POST" にしているのは、HTMLのフォームで DELETE メソッドが使えないため。style="display:inline;" → ボタンをリストの横に表示するためのCSS。-->
+            <button type="submit" onclick="return confirm('本当に削除しますか？')">削除</button> <!--confirm(...) → 削除前に JavaScript の確認ダイアログを表示。-->
+          </form>
         </li>
       <% }) %>
     </ul>
