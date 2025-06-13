@@ -1,0 +1,25 @@
+<!--EJS（Embedded JavaScript）は、HTMLの中にJavaScriptを埋め込むテンプレートエンジンです。-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>メッセージ一覧</title>
+</head>
+<body>
+  <h1>メッセージ一覧</h1>
+
+  <% if (messages.length === 0) { %> <!--<% %> は JavaScriptのロジック を書く部分（画面に表示しない）。messages.length === 0：メッセージが0件なら「メッセージがありません」と表示。-->
+    <p>まだメッセージがありません。</p>
+  <% } else { %> <!--else：1件以上あれば下の ul リストで表示する。-->
+    <ul>
+      <% messages.forEach(msg => { %> <!--messages.forEach(msg => { ... })：受け取ったメッセージ配列を1件ずつループ。-->
+        <li>
+          <strong><%= msg.name %></strong>: <%= msg.message %> <em>(<%= msg.createdAt.toLocaleString() %>)</em> <!--<%= %> は 値をHTMLに埋め込む（表示する）命令。-->
+        </li>
+      <% }) %>
+    </ul>
+  <% } %> <!--if 文の終了。-->
+
+  <p><a href="/form.html">← フォームに戻る</a></p>
+</body>
+</html>

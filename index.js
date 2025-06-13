@@ -2,6 +2,7 @@
 const express = require('express'); //express: Node.jsのWebアプリケーションフレームワーク。ルーティングやミドルウェアが使える。
 const mongoose = require('mongoose'); //MongoDBとNode.jsをつなぐODMライブラリ「Mongoose」を読み込みます。これにより、MongoDBのデータ操作をJavaScript的な書き方で扱えるようになります。
 const Message = require('./models/Message'); //`models/Message.js` に定義された Mongoose モデル（スキーマ付きのデータ定義）を読み込みます。これがMongoDBの `messages` コレクションの操作に使われます。
+const path = require('path'); //path：ファイルパス操作用（views/ フォルダ指定に使う）
 /*const fs = require('fs'); //fs: ファイルを読み書きできるNode.jsの標準モジュール（File System）。
 const path = require('path'); //path: ファイルやフォルダのパスを扱うためのNode.js標準モジュール。*/
 
@@ -25,6 +26,10 @@ app.use(express.urlencoded({ extended: true })); //express.urlencoded()	フォ�
 
 // publicフォルダ内のファイルを静的に配信
 app.use(express.static('public')); //express.static('public') を使うと、public フォルダ内のファイルがそのままURLでアクセスできる。
+
+// EJSテンプレートエンジンの設定
+app.set('view engine', 'ejs'); //view engine：HTMLを生成するテンプレートとして EJS を使う
+app.set('views', path.join(__dirname, 'views')); //views：EJSファイルが入っているフォルダ（views/messages.ejs など）
 
 // 保存先ファイルのパス
 //const FILE_PATH = path.join(__dirname, 'data', 'messages.csv'); //__dirname：このファイル（index.js）が存在するフォルダの絶対パス。path.join(...)：OSに依存しない正しいパスを作成。messages.csv：保存先のファイル名。なければ後で自動生成される。
@@ -77,6 +82,17 @@ app.post('/submit', async (req, res) => {
   } catch (error) {
     console.error('DB保存エラー:', error);
     res.status(500).send('サーバーエラー'); //エラー時は 500 エラーを返す
+  }
+});
+
+// メッセージ一覧表示
+app.get('/messages', async (req, res) => {
+  try {
+    const messages = await Message.find().sort({ createdAt: -1 }); //MongoDBからすべてのメッセージを新しい順で取得
+    res.render('messages', { messages }); //messages.ejs に渡してHTML生成して返す
+  } catch (error) {
+    console.error('取得エラー:', error);
+    res.status(500).send('エラーが発生しました');
   }
 });
 
