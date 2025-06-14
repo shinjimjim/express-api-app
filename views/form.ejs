@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>お問い合わせフォーム</title>
+</head>
+<body>
+  <h1>お問い合わせ</h1>
+
+  <% if (typeof error !== 'undefined' && error) { %> <!--error が存在して値があれば、赤字でメッセージを表示。-->
+    <p style="color:red;"><%= error %></p>
+  <% } %>
+
+  <form action="/submit" method="POST"> <!--action="/submit"：送信先URL（index.jsのPOST /submit に対応）method="POST"：フォーム送信の方式（GETと違ってURLにデータを載せない）-->
+    <p>
+      名前：<br>
+      <input type="text" name="name" value="<%= name || '' %>"> <!--name="name"：サーバー側で req.body.name という形で受け取れる。value="<%= name || '' %>"：バリデーションエラーで戻ってきた時、前の入力を保持するため-->
+    </p>
+    <p>
+      メッセージ：<br>
+      <textarea name="message" rows="5" cols="30"><%= message || '' %></textarea> <!--<%= message || '' %>：前回の入力内容を残す。空なら空文字にする。-->
+    </p>
+    <button type="submit">送信</button>
+  </form>
+
+  <p><a href="/messages">メッセージ一覧を見る</a></p>
+</body>
+</html>

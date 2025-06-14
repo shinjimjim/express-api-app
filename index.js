@@ -21,9 +21,9 @@ mongoose.connect('mongodb://localhost:27017/contactForm', { //mongoose.connect()
 // JSONリクエストを扱うためのミドルウェア
 //app.use(express.json()); //この行によって、リクエストの body に含まれる JSON データを自動で JavaScriptオブジェクトに変換してくれます。
 
+//ミドルウェア
 // フォームのデータをパース（解析）（URLエンコードされたデータ）
 app.use(express.urlencoded({ extended: true })); //express.urlencoded()	フォーム（URLエンコード）データをパース（解析）。extended: true は、ネストされたオブジェクトも処理可能にするオプション。
-
 // publicフォルダ内のファイルを静的に配信
 app.use(express.static('public')); //express.static('public') を使うと、public フォルダ内のファイルがそのままURLでアクセスできる。
 
@@ -33,6 +33,11 @@ app.set('views', path.join(__dirname, 'views')); //views：EJSファイルが入
 
 // 保存先ファイルのパス
 //const FILE_PATH = path.join(__dirname, 'data', 'messages.csv'); //__dirname：このファイル（index.js）が存在するフォルダの絶対パス。path.join(...)：OSに依存しない正しいパスを作成。messages.csv：保存先のファイル名。なければ後で自動生成される。
+
+// GET: フォーム表示（初期表示用）
+app.get('/form', (req, res) => {
+  res.render('form', { error: null, name: '', message: '' }); //初期表示時は error, name, message を空で渡す。
+});
 
 // 1. GETルート：テキストを返す。`GET`メソッドで `/`（ルート）にアクセスがあったときの処理。
 /*app.get('/', (req, res) => { //`req`：リクエストオブジェクト（誰がアクセスしたか等）。`res`：レスポンスオブジェクト（何を返すか）
@@ -53,7 +58,7 @@ app.post('/api/message', (req, res) => {
 
 // POSTルート：フォームからのデータ受信
 //app.post('/submit', (req, res) => {
-app.post('/submit', async (req, res) => {
+app.post('/submit', async (req, res) => { //async キーワードは、この関数が非同期処理（データベース操作など）を含むことを示しており、await を使用できます。
   const { name, message } = req.body; //req.body.name など	送られたフォームのデータを取得。req.body.name と req.body.message にフォームの内容が入ります。
   //console.log(`Name: ${name}, Message: ${message}`);
 
@@ -75,7 +80,15 @@ app.post('/submit', async (req, res) => {
   res.redirect('/thanks.html'); //res.redirect()	送信後にページを切り替える（リダイレクト）
   });*/
 
-  try {
+  if (!name || !message) { //空チェック（バリデーション）で未入力ならエラーメッセージ付きで再表示。
+    return res.status(400).render('form', { //再び form.ejs テンプレートをレンダリングして、エラーメッセージと一緒にユーザーに表示します。
+      error: '名前とメッセージは必須です。',
+      name,
+      message //ユーザーが入力した内容を再度フォームに表示するために、name と message の値をそのまま渡します。
+    });
+  }
+
+  try { //try ブロック内でエラーが発生した場合、この catch ブロックが実行されます。
     const newMessage = new Message({ name, message }); //new Message(...) で新しいメッセージドキュメントを作成
     await newMessage.save(); //save() でMongoDBに保存（非同期処理なので await）
     res.redirect('/thanks.html'); //保存に成功したら /thanks.html にリダイレクト
@@ -99,7 +112,7 @@ app.get('/messages', async (req, res) => {
 // 削除処理ルート
 app.post('/messages/delete/:id', async (req, res) => { //URLに含まれるID（例: /messages/delete/123）を使って、該当メッセージを削除。
   try {
-    await Message.findByIdAndDelete(req.params.id);
+    await Message.findByIdAndDelete(req.params.id); //req.params.id: URL から取得したメッセージの ID を表します。await: 削除処理が完了するまで待ちます。
     res.redirect('/messages'); //成功したらメッセージ一覧に戻る。
   } catch (error) {
     console.error('削除エラー:', error);
