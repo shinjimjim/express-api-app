@@ -11,6 +11,9 @@ const app = express();
 //サーバーが待ち受けるポート番号を定義。  
 const PORT = 3000;
 
+// CSVエクスポート用ライブラリ
+const createCsvWriter = require('csv-writer').createObjectCsvWriter; //csv-writer：CSVファイルを書き出すためのライブラリ
+
 // MongoDB接続
 mongoose.connect('mongodb://localhost:27017/contactForm', { //mongoose.connect() でMongoDBに接続。contactForm というデータベースを指定
   useNewUrlParser: true,
@@ -117,6 +120,34 @@ app.post('/messages/delete/:id', async (req, res) => { //URLに含まれるID（
   } catch (error) {
     console.error('削除エラー:', error);
     res.status(500).send('削除に失敗しました');
+  }
+});
+
+// GET: CSVエクスポート
+app.get('/export/csv', async (req, res) => {
+  try {
+    const messages = await Message.find().sort({ createdAt: -1 });
+
+    const csvWriter = createCsvWriter({
+      path: 'messages.csv',
+      header: [
+        { id: 'name', title: '名前' },
+        { id: 'message', title: 'メッセージ' },
+        { id: 'createdAt', title: '作成日時' }
+      ]
+    });
+
+    const data = messages.map(msg => ({ //messages を MongoDB から取得
+      name: msg.name,
+      message: msg.message,
+      createdAt: msg.createdAt.toLocaleString()
+    }));
+
+    await csvWriter.writeRecords(data); //csvWriter.writeRecords(...) でCSVファイルを作成
+    res.download(path.resolve('messages.csv')); //res.download(...) でダウンロード開始（ブラウザに保存ダイアログが出る）
+  } catch (err) {
+    console.error('CSVエクスポートエラー:', err);
+    res.status(500).send('CSVエクスポート中にエラーが発生しました');
   }
 });
 
