@@ -2,9 +2,8 @@
 const express = require('express'); //express: Node.jsのWebアプリケーションフレームワーク。ルーティングやミドルウェアが使える。
 const mongoose = require('mongoose'); //MongoDBとNode.jsをつなぐODMライブラリ「Mongoose」を読み込みます。これにより、MongoDBのデータ操作をJavaScript的な書き方で扱えるようになります。
 const Message = require('./models/Message'); //`models/Message.js` に定義された Mongoose モデル（スキーマ付きのデータ定義）を読み込みます。これがMongoDBの `messages` コレクションの操作に使われます。
-const path = require('path'); //path：ファイルパス操作用（views/ フォルダ指定に使う）
-/*const fs = require('fs'); //fs: ファイルを読み書きできるNode.jsの標準モジュール（File System）。
-const path = require('path'); //path: ファイルやフォルダのパスを扱うためのNode.js標準モジュール。*/
+const path = require('path'); //path：ファイルパス操作用（views/ フォルダ指定に使う）ファイルやフォルダのパスを扱うためのNode.js標準モジュール。
+//const fs = require('fs'); //fs: ファイルを読み書きできるNode.jsの標準モジュール（File System）。
 
 //express() を呼び出すことで、Expressアプリケーション（Webサーバー）インスタンスを生成します。
 const app = express();
@@ -23,8 +22,6 @@ mongoose.connect('mongodb://localhost:27017/contactForm', { //mongoose.connect()
 
 // JSONリクエストを扱うためのミドルウェア
 //app.use(express.json()); //この行によって、リクエストの body に含まれる JSON データを自動で JavaScriptオブジェクトに変換してくれます。
-
-//ミドルウェア
 // フォームのデータをパース（解析）（URLエンコードされたデータ）
 app.use(express.urlencoded({ extended: true })); //express.urlencoded()	フォーム（URLエンコード）データをパース（解析）。extended: true は、ネストされたオブジェクトも処理可能にするオプション。
 // publicフォルダ内のファイルを静的に配信
@@ -124,27 +121,35 @@ app.post('/messages/delete/:id', async (req, res) => { //URLに含まれるID（
 });
 
 // GET: CSVエクスポート
-app.get('/export/csv', async (req, res) => {
+app.get('/export/csv', async (req, res) => { //ユーザーが /export/csv にアクセスするとこの関数が実行されます。
   try {
-    const messages = await Message.find().sort({ createdAt: -1 });
+    const messages = await Message.find().sort({ createdAt: -1 }); //MongoDBから全てのメッセージを取得します。.sort({ createdAt: -1 }) で新しい順に並べています。
 
-    const csvWriter = createCsvWriter({
-      path: 'messages.csv',
-      header: [
+    const csvWriter = createCsvWriter({ //csvWriter は csv-writer ライブラリを使ったCSV書き出しインスタンスです。
+      path: 'messages.csv', //path：保存先のCSVファイル名（この場合は messages.csv）
+      header: [ //header：CSVの1行目に表示される列名（日本語タイトルOK）
         { id: 'name', title: '名前' },
         { id: 'message', title: 'メッセージ' },
         { id: 'createdAt', title: '作成日時' }
       ]
     });
 
-    const data = messages.map(msg => ({ //messages を MongoDB から取得
+    const data = messages.map(msg => ({ //messages を MongoDB から取得。messages を .map() で1つ1つ { name, message, createdAt } の形に変換
       name: msg.name,
       message: msg.message,
-      createdAt: msg.createdAt.toLocaleString()
+      createdAt: msg.createdAt.toLocaleString('ja-JP', { //createdAt.toLocaleString() は日付を「YYYY/MM/DD HH:mm:ss」形式に整形しています
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      }) //ja-JP, Asia/Tokyo で 日本語＆日本時間 に揃えています（重要）
     }));
 
     await csvWriter.writeRecords(data); //csvWriter.writeRecords(...) でCSVファイルを作成
-    res.download(path.resolve('messages.csv')); //res.download(...) でダウンロード開始（ブラウザに保存ダイアログが出る）
+    res.download(path.resolve('messages.csv')); //res.download(...) でダウンロード開始（ブラウザに保存ダイアログが出る）path.resolve() は絶対パスに変換（セキュリティ的にも推奨）
   } catch (err) {
     console.error('CSVエクスポートエラー:', err);
     res.status(500).send('CSVエクスポート中にエラーが発生しました');
