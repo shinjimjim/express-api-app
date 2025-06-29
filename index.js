@@ -4,14 +4,13 @@ const mongoose = require('mongoose'); //MongoDBとNode.jsをつなぐODMライ�
 const Message = require('./models/Message'); //`models/Message.js` に定義された Mongoose モデル（スキーマ付きのデータ定義）を読み込みます。これがMongoDBの `messages` コレクションの操作に使われます。
 const path = require('path'); //path：ファイルパス操作用（views/ フォルダ指定に使う）ファイルやフォルダのパスを扱うためのNode.js標準モジュール。
 const fs = require('fs'); //fs: ファイルを読み書きできるNode.jsの標準モジュール（File System）。
+const createCsvWriter = require('csv-writer').createObjectCsvWriter; //CSVエクスポート用ライブラリ
+const PDFDocument = require('pdfkit'); //PDFエクスポート用ライブラリ
 
 //express() を呼び出すことで、Expressアプリケーション（Webサーバー）インスタンスを生成します。
 const app = express();
 //サーバーが待ち受けるポート番号を定義。  
 const PORT = 3000;
-
-// CSVエクスポート用ライブラリ
-const createCsvWriter = require('csv-writer').createObjectCsvWriter; //csv-writer：CSVファイルを書き出すためのライブラリ
 
 // MongoDB接続
 mongoose.connect('mongodb://localhost:27017/contactForm', { //mongoose.connect() でMongoDBに接続。contactForm というデータベースを指定
@@ -204,6 +203,77 @@ app.get('/export/csv', async (req, res) => { //ユーザーが /export/csv に�
   } catch (err) {
     console.error('CSVエクスポートエラー:', err);
     res.status(500).send('CSVエクスポート中にエラーが発生しました');
+  }
+});
+
+//MongoDBのデータをPDF形式で出力・ダウンロードできるようにするNode.js + Expressのルート処理
+app.get('/export/pdf', async (req, res) => {
+  try {
+    //クエリパラメータ（nameやafter）でデータを絞り込む
+    const { name, after } = req.query; //URLクエリ（?name=山田&after=2025-06-01）を取得
+    const query = {}; //検索条件 query を空のオブジェクトで初期化。
+
+    if (name) {
+      query.name = name; //「完全一致検索」
+    }
+
+    if (after) { //after=2025-06-01 のように指定されたら、日付以降の投稿のみ取得。
+      const afterDate = new Date(after);
+      if (!isNaN(afterDate)) {
+        query.createdAt = { $gte: afterDate }; //$gte は「greater than or equal（以上）」の意味。
+      }
+    }
+
+    //MongoDBから投稿メッセージを取得
+    const messages = await Message.find(query).sort({ createdAt: -1 });
+
+    //今日の日付を取得し、ファイル名（例：messages_2025-06-29.pdf）を作成。
+    const today = new Date();
+    const dateStr = today.toISOString().split('T')[0];
+    const filename = `messages_${dateStr}.pdf`;
+
+    // レスポンス設定（PDFで直接ダウンロード）
+    //ブラウザに PDFファイルをダウンロードさせるためのヘッダー設定。
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`); //Content-Disposition: attachment で「ダウンロード指示」。
+    res.setHeader('Content-Type', 'application/pdf');
+
+    const doc = new PDFDocument(); //PDFDocument のインスタンス（doc）を作成。
+    doc.pipe(res); // pipe(res) により、PDFの出力先をレスポンス（ブラウザ）に直接設定。
+
+    // ✅ フォントを日本語対応に変更
+    const fontPath = path.join(__dirname, 'fonts', 'NotoSansJP-Regular.ttf'); //.ttf（TrueType Font）を明示的に読み込まないと日本語が文字化けします。
+    doc.font(fontPath);
+
+    doc.fontSize(18).text(`メッセージ一覧（${dateStr} 時点）`, {
+      align: 'center' //タイトルを中央寄せで表示。
+    });
+    doc.moveDown(); //moveDown() で1行下にスペース。
+
+    messages.forEach(msg => {
+      const createdAt = msg.createdAt.toLocaleString('ja-JP', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+
+      //メッセージ1件ずつ、名前・本文・日時をPDFに出力。
+      doc
+        .fontSize(14)
+        .text(`名前: ${msg.name}`)
+        .text(`メッセージ: ${msg.message}`)
+        .text(`投稿日時: ${createdAt}`)
+        .moveDown(); //.moveDown() で行間にスペースを空ける。
+    });
+
+    doc.end(); // PDF終了。ファイルを書き出して完了。
+
+  } catch (err) {
+    console.error('PDF出力エラー:', err);
+    res.status(500).send('PDFエクスポート中にエラーが発生しました');
   }
 });
 
