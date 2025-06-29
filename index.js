@@ -3,7 +3,7 @@ const express = require('express'); //express: Node.jsのWebアプリケーシ�
 const mongoose = require('mongoose'); //MongoDBとNode.jsをつなぐODMライブラリ「Mongoose」を読み込みます。これにより、MongoDBのデータ操作をJavaScript的な書き方で扱えるようになります。
 const Message = require('./models/Message'); //`models/Message.js` に定義された Mongoose モデル（スキーマ付きのデータ定義）を読み込みます。これがMongoDBの `messages` コレクションの操作に使われます。
 const path = require('path'); //path：ファイルパス操作用（views/ フォルダ指定に使う）ファイルやフォルダのパスを扱うためのNode.js標準モジュール。
-//const fs = require('fs'); //fs: ファイルを読み書きできるNode.jsの標準モジュール（File System）。
+const fs = require('fs'); //fs: ファイルを読み書きできるNode.jsの標準モジュール（File System）。
 
 //express() を呼び出すことで、Expressアプリケーション（Webサーバー）インスタンスを生成します。
 const app = express();
@@ -127,13 +127,13 @@ app.get('/export/csv', async (req, res) => { //ユーザーが /export/csv に�
 
     // ファイル名に現在の日付を含める（例：messages_2025-06-28.csv）
     const today = new Date(); //現在の日付を取得
-    const dateStr = today.toISOString().split('T')[0]; // "YYYY-MM-DD"
+    const dateStr = today.toISOString().split('T')[0]; // toISOString() → "2025-06-29T12:34:56.789Z" のような形式になるので、split('T')[0] で "2025-06-29" だけ取り出しています。
     const filename = `messages_${dateStr}.csv`;
 
     const csvWriter = createCsvWriter({ //csvWriter は csv-writer ライブラリを使ったCSV書き出しインスタンスです。
       path: filename, //path：保存先のCSVファイル名
       header: [ //header：CSVの1行目に表示される列名（日本語タイトルOK）
-        { id: 'name', title: '名前' },
+        { id: 'name', title: '名前' }, //各 id はMongoDBのフィールド名、title はCSVのカラム見出し。
         { id: 'message', title: 'メッセージ' },
         { id: 'createdAt', title: '作成日時' }
       ]
@@ -154,8 +154,26 @@ app.get('/export/csv', async (req, res) => { //ユーザーが /export/csv に�
     }));
 
     await csvWriter.writeRecords(data); //csvWriter.writeRecords(...) でCSVファイルを作成
-    //res.download(path, filename)	第二引数でダウンロード時のファイル名を指定可能
-    res.download(path.resolve(filename), filename); //res.download(...) でダウンロード開始（ブラウザに保存ダイアログが出る）path.resolve() は絶対パスに変換（セキュリティ的にも推奨）クライアント側も同じファイル名でDL
+
+    // ファイルを送信し、その後削除
+    //res.download() はクライアントにCSVファイルを送信して、ダウンロードを開始させるメソッド。（ブラウザに保存ダイアログが出る）
+    //第2引数 filename でクライアント側のファイル名を指定できます。
+    //第3引数のコールバック関数 err => {} は、送信完了時または失敗時に実行される関数。
+    res.download(path.resolve(filename), filename, (err) => { //path.resolve() は絶対パスに変換（セキュリティ的にも推奨）
+      if (err) {
+        console.error('CSV送信エラー:', err);
+      }
+
+      // ダウンロード完了後に削除
+      fs.unlink(filename, (unlinkErr) => { //fs.unlink(filename)	一時ファイルを削除するNode.jsの関数
+        if (unlinkErr) {
+          console.error('CSV削除エラー:', unlinkErr);
+        } else {
+          console.log(`🧹 一時CSVファイルを削除: ${filename}`);
+        }
+      });
+    });
+
   } catch (err) {
     console.error('CSVエクスポートエラー:', err);
     res.status(500).send('CSVエクスポート中にエラーが発生しました');
