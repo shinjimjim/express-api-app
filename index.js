@@ -155,6 +155,14 @@ app.get('/export/csv', async (req, res) => { //ユーザーが /export/csv に�
 
     await csvWriter.writeRecords(data); //csvWriter.writeRecords(...) でCSVファイルを作成
 
+    // UTF-8 BOMを先頭に付けて（Excel で文字化けしないようにする）ファイルを再保存
+    //BOMをバッファ形式で生成する
+    const bom = Buffer.from('\uFEFF', 'utf-8'); //\uFEFF は BOM（Byte Order Mark） を表す Unicode 文字。Buffer.from(..., 'utf-8') は、UTF-8エンコーディングで「バイナリデータ（バッファ）」を作成するNode.jsの関数。
+    //content は「BOMなしのCSVファイルの中身」
+    const content = fs.readFileSync(filename); //fs.readFileSync() は同期的にファイルをバッファ形式で読み込みます。
+    //filename は「BOM付きのUTF-8 CSVファイル」に更新される。
+    fs.writeFileSync(filename, Buffer.concat([bom, content])); //Buffer.concat([bom, content]) は BOM と CSVの中身を先頭から1つのバッファに結合します。[bom, content] は [BOMの3バイト, CSVの中身]その結果を writeFileSync() で元の filename に上書き保存します。
+
     // ファイルを送信し、その後削除
     //res.download() はクライアントにCSVファイルを送信して、ダウンロードを開始させるメソッド。（ブラウザに保存ダイアログが出る）
     //第2引数 filename でクライアント側のファイル名を指定できます。
