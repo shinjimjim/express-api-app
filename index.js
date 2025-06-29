@@ -123,7 +123,26 @@ app.post('/messages/delete/:id', async (req, res) => { //URLに含まれるID（
 // GET: CSVエクスポート
 app.get('/export/csv', async (req, res) => { //ユーザーが /export/csv にアクセスするとこの関数が実行されます。
   try {
-    const messages = await Message.find().sort({ createdAt: -1 }); //MongoDBから全てのメッセージを取得します。.sort({ createdAt: -1 }) で新しい順に並べています。
+    //MongoDBの検索条件（クエリ）をクエリパラメータに基づいて動的に作成して実行する
+    //クライアントがURLで指定した ?name=◯◯&after=◯◯ などのクエリパラメータを取得しています。
+    const { name, after } = req.query; //req.query は、Expressが提供するクエリパラメータのオブジェクト。
+    const query = {}; //MongoDBに渡すための「検索条件オブジェクト」を空で用意します。この後に query.name や query.createdAt を条件に応じて追加していきます。
+
+    //ユーザーが ?name=山田 のように名前を指定した場合だけ処理します。
+    if (name) {
+      //query.name = new RegExp(name, 'i'); // 名前に部分一致（大文字小文字無視）。new RegExp(name, 'i') は正規表現（Regex）で部分一致検索を可能にします。
+      query.name = name; //「完全一致検索」
+    }
+
+    //after が指定された場合（例：?after=2025-06-01）は、それを日付に変換します。
+    if (after) {
+      const afterDate = new Date(after);
+      if (!isNaN(afterDate)) { //afterDate が有効な日付なら（NaNでなければ）、「作成日時（createdAt）が afterDate 以降」の条件を追加。
+        query.createdAt = { $gte: afterDate }; // createdAt: { $gte: 日付 } は、MongoDBで「日付以降」のデータを取得する書き方。$gte は greater than or equal to（以上）という意味。
+      }
+    }
+
+    const messages = await Message.find(query).sort({ createdAt: -1 }); //MongoDBからqueryを使ってメッセージを取得します。.sort({ createdAt: -1 }) で新しい順に並べています。
 
     // ファイル名に現在の日付を含める（例：messages_2025-06-28.csv）
     const today = new Date(); //現在の日付を取得
@@ -198,3 +217,8 @@ app.listen(PORT, () => {
 //JSON処理	express.json() + req.body
 //レスポンス返却	res.send(), res.json()
 //デバッグ出力	console.log()
+
+//以下のように指定してダウンロード可能にします
+// http://localhost:3000/export/csv?name=田中
+// http://localhost:3000/export/csv?after=2025-06-20
+// http://localhost:3000/export/csv?name=田中&after=2025-06-20
