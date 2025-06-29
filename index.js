@@ -125,8 +125,13 @@ app.get('/export/csv', async (req, res) => { //ユーザーが /export/csv に�
   try {
     const messages = await Message.find().sort({ createdAt: -1 }); //MongoDBから全てのメッセージを取得します。.sort({ createdAt: -1 }) で新しい順に並べています。
 
+    // ファイル名に現在の日付を含める（例：messages_2025-06-28.csv）
+    const today = new Date(); //現在の日付を取得
+    const dateStr = today.toISOString().split('T')[0]; // "YYYY-MM-DD"
+    const filename = `messages_${dateStr}.csv`;
+
     const csvWriter = createCsvWriter({ //csvWriter は csv-writer ライブラリを使ったCSV書き出しインスタンスです。
-      path: 'messages.csv', //path：保存先のCSVファイル名（この場合は messages.csv）
+      path: filename, //path：保存先のCSVファイル名
       header: [ //header：CSVの1行目に表示される列名（日本語タイトルOK）
         { id: 'name', title: '名前' },
         { id: 'message', title: 'メッセージ' },
@@ -149,7 +154,8 @@ app.get('/export/csv', async (req, res) => { //ユーザーが /export/csv に�
     }));
 
     await csvWriter.writeRecords(data); //csvWriter.writeRecords(...) でCSVファイルを作成
-    res.download(path.resolve('messages.csv')); //res.download(...) でダウンロード開始（ブラウザに保存ダイアログが出る）path.resolve() は絶対パスに変換（セキュリティ的にも推奨）
+    //res.download(path, filename)	第二引数でダウンロード時のファイル名を指定可能
+    res.download(path.resolve(filename), filename); //res.download(...) でダウンロード開始（ブラウザに保存ダイアログが出る）path.resolve() は絶対パスに変換（セキュリティ的にも推奨）クライアント側も同じファイル名でDL
   } catch (err) {
     console.error('CSVエクスポートエラー:', err);
     res.status(500).send('CSVエクスポート中にエラーが発生しました');
