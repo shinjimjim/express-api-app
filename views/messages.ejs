@@ -25,9 +25,12 @@
           <!-- 削除フォーム -->
           <!--<form action="/messages/delete/<%= msg._id %>" method="POST" style="display:inline;">--> <!--<form> タグは、削除リクエストを送る HTML フォーム。action="/messages/delete/◯◯" によって、どのメッセージを削除するか識別（IDをURLに含めている）。method="POST" にしているのは、HTMLのフォームで DELETE メソッドが使えないため。style="display:inline;" → ボタンをリストの横に表示するためのCSS。-->
             <!--<button type="submit" onclick="return confirm('本当に削除しますか？')">削除</button>--> <!--confirm(...) → 削除前に JavaScript の確認ダイアログを表示。-->
-          <form action="/messages/delete/<%= msg._id %>" method="POST" onsubmit="return confirm('本当に削除しますか？')"><!--onsubmit="return confirm(...)"：削除前の確認ダイアログ-->
-            <button type="submit" class="btn btn-danger btn-sm">削除</button>
-          </form>
+          <dev class="mt-3 d-flex justify-content-center gap-2">
+            <form action="/messages/delete/<%= msg._id %>" method="POST" onsubmit="return confirm('本当に削除しますか？')"><!--onsubmit="return confirm(...)"：削除前の確認ダイアログ-->
+              <button type="submit" class="btn btn-danger btn-sm">削除</button>
+            </form>
+            <a href="/messages/edit/<%= msg._id %>" class="btn btn-warning btn-sm">編集</a>
+          </dev>
         </li>
       <% }) %>
     </ul>

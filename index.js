@@ -22,7 +22,7 @@ mongoose.connect('mongodb://localhost:27017/contactForm', { //mongoose.connect()
 // JSONリクエストを扱うためのミドルウェア
 //app.use(express.json()); //この行によって、リクエストの body に含まれる JSON データを自動で JavaScriptオブジェクトに変換してくれます。
 // フォームのデータをパース（解析）（URLエンコードされたデータ）
-app.use(express.urlencoded({ extended: true })); //express.urlencoded()	フォーム（URLエンコード）データをパース（解析）。extended: true は、ネストされたオブジェクトも処理可能にするオプション。
+app.use(express.urlencoded({ extended: true })); //express.urlencoded()	フォーム（URLエンコード）データをパース（解析）。extended: true は、ネストされたオブジェクトも処理可能にするオプション。express.urlencoded() ミドルウェアが有効になっているから req.body が使えます。
 // publicフォルダ内のファイルを静的に配信
 app.use(express.static('public')); //express.static('public') を使うと、public フォルダ内のファイルがそのままURLでアクセスできる。
 
@@ -107,6 +107,43 @@ app.get('/messages', async (req, res) => {
     res.status(500).send('エラーが発生しました');
   }
 });
+
+// GET: 編集フォーム表示
+app.get('/messages/edit/:id', async (req, res) => {
+  try {
+    const message = await Message.findById(req.params.id); //`req.params.id`：URLの `:id` に該当する文字列を取得。`await`：結果が返るまで待機（非同期のPromiseを待つ）
+    if (!message) {
+      return res.status(404).send('メッセージが見つかりません'); //res.status(404)：HTTPステータスを「Not Found（見つからない）」に設定。res.send()：簡単なエラーメッセージを返す
+    }
+    res.render('edit', { message, error: null }); //`res.render()`：EJSテンプレートを表示するメソッド。`'edit'`：`views/edit.ejs` を表示。`{ message, error: null }`：EJSに渡すデータ（オブジェクト）。EJS側で `<%= message.name %>` などの形で表示できます。
+  } catch (err) {
+    console.error('編集フォーム表示エラー:', err); //console.error()：開発者向けに詳細ログを出力
+    res.status(500).send('サーバーエラー'); //res.status(500).send()：クライアント側には「500 サーバーエラー」を返す
+  }
+});
+
+// POST: 編集フォーム送信
+app.post('/messages/edit/:id', async (req, res) => { //`async`：非同期処理を使えるようにしている（MongooseのDB操作は非同期）
+  const { name, message } = req.body; //req.body：フォームから送信されたデータを取得（name="name", name="message"）
+
+  if (!name || !message) { //入力が空の場合（未入力）のバリデーション
+    const oldMessage = await Message.findById(req.params.id); //入力が不正でもフォームを再表示する必要があるため、元のメッセージをデータベースから再取得
+    return res.render('edit', { //`edit.ejs` にエラー付きで再表示
+      message: oldMessage, //`message`：再取得した元のメッセージ
+      error: '名前とメッセージは必須です' //`error`：EJS側で `<%= error %>` として表示される
+    }); //`return` をつけていることで、これ以降の処理を中断します。
+  }
+
+  try {
+    //`Message.findByIdAndUpdate(id, updateObj)`：Mongooseの標準的な更新メソッド
+    await Message.findByIdAndUpdate(req.params.id, { name, message }); //`{ name, message }`：更新する内容（フィールド）
+    res.redirect('/messages');
+  } catch (err) {
+    console.error('編集保存エラー:', err);
+    res.status(500).send('更新に失敗しました'); //`res.status(500)` でHTTPエラーとしてクライアントに通知
+  }
+});
+
 
 // 削除処理ルート
 app.post('/messages/delete/:id', async (req, res) => { //URLに含まれるID（例: /messages/delete/123）を使って、該当メッセージを削除。
